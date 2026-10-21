@@ -1,0 +1,9 @@
+User Access Request
+
+Name: John Smith
+Email: john.smith@example.com
+Employee Number: 12345
+Employee ID: 987654
+Login: jsmith
+Main Workplace: 5.21
+Additional Workplaces: 4.18a, 1.169a, 26.2
