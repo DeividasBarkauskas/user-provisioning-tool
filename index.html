@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>User Provisioning Tool</title>
+<style>
+:root{--bg:#0e1420;--panel:#0f172a;--ink:#e2e8f0;--muted:#94a3b8;--border:#1f2937}
+*{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}.wrap{display:grid;grid-template-columns:minmax(360px,1fr) 440px;gap:16px;min-height:100vh;padding:16px}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}.hdr{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}.hdr h1{font-size:15px;margin:0;font-weight:600}.body{padding:12px}textarea{width:100%;height:65vh;min-height:300px;resize:vertical;background:#0b1220;color:#f1f5f9;border:1px solid var(--border);border-radius:10px;padding:10px;outline:none;font:13px/1.5 ui-monospace,Consolas,monospace}.row{display:grid;grid-template-columns:145px 1fr;align-items:center;gap:10px;margin:8px 0}.row label{color:var(--muted)}.row input{width:100%;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:#e5e7eb;outline:none}.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}button{background:#111b2f;color:#dbeafe;border:1px solid #1f334d;border-radius:10px;padding:10px 14px;cursor:pointer}.muted{color:var(--muted);font-size:12px}.ok{color:#22c55e}.err{color:#ef4444}.sqlwrap{margin-top:12px;border:1px dashed #273449;border-radius:12px}.sqlhdr{padding:10px 12px;background:#0b1220;border-bottom:1px dashed #273449;cursor:pointer}.sql{padding:12px;white-space:pre-wrap;font:12px/1.5 ui-monospace,Consolas,monospace;background:#07101f;display:none}.note{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:10px;color:var(--muted)}@media(max-width:850px){.wrap{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="panel"><div class="hdr"><h1>Access request</h1><span class="muted">automatic parser</span></div><div class="body"><textarea id="src" placeholder="Paste the access request here..."></textarea></div></section>
+<section class="panel"><div class="hdr"><h1>Parsed values</h1></div><div class="body">
+<div class="row"><label>Name</label><input id="name"></div>
+<div class="row"><label>Surname</label><input id="surname"></div>
+<div class="row"><label>Email</label><input id="email"></div>
+<div class="row"><label>Employee Number</label><input id="employeeNumber"></div>
+<div class="row"><label>Employee ID</label><input id="employeeId"></div>
+<div class="row"><label>Main Workplace</label><input id="workplace"></div>
+<div class="row"><label>Login</label><input id="login"></div>
+<div class="row"><label>Additional Workplaces</label><input id="extraWorkplaces"></div>
+<div class="btns"><button id="uppercase">LOGIN → UPPERCASE</button><button id="copy">Copy SQL</button><span id="state" class="muted"></span></div>
+<div class="sqlwrap"><div class="sqlhdr" id="toggle"><b>View generated SQL</b></div><pre class="sql" id="sql"></pre></div>
+<div class="note">Portfolio demo only. Authentication logic and real database schema are intentionally excluded.</div>
+</div></section>
+</div>
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const fields={name:'#name',surname:'#surname',email:'#email',employeeNumber:'#employeeNumber',employeeId:'#employeeId',workplace:'#workplace',login:'#login',extras:'#extraWorkplaces'};
+const rx={
+ email:/Email\s*:\s*([^\s]+)/i,
+ name:/Name\s*:\s*([^\n\r]+)/i,
+ employeeNumber:/Employee\s*Number\s*:\s*([A-Za-z0-9-]+)/i,
+ employeeId:/Employee\s*ID\s*:\s*([A-Za-z0-9-]+)/i,
+ login:/Login\s*:\s*([A-Za-z0-9._-]+)/i,
+ workplace:/Main\s*Workplace\s*:\s*([0-9]{1,2}\.[0-9]{1,3}[a-z]?)/i,
+ extras:/Additional\s*Workplaces\s*:\s*(.+)$/im,
+ workplaceToken:/(\d+(?:\.\d+)?[a-z]?)/gi
+};
+function splitName(value){const p=(value||'').trim().replace(/\s+/g,' ').split(' ');return{name:p[0]||'',surname:p.slice(1).join(' ')||''}}
+function parse(text){const out={name:'',surname:'',email:'',employeeNumber:'',employeeId:'',workplace:'',login:'',extras:[]};let m;
+ if((m=text.match(rx.name))){const n=splitName(m[1]);out.name=n.name;out.surname=n.surname}
+ if((m=text.match(rx.email)))out.email=m[1];
+ if((m=text.match(rx.employeeNumber)))out.employeeNumber=m[1];
+ if((m=text.match(rx.employeeId)))out.employeeId=m[1];
+ if((m=text.match(rx.login)))out.login=m[1];
+ if((m=text.match(rx.workplace)))out.workplace=m[1];
+ if((m=text.match(rx.extras))){rx.workplaceToken.lastIndex=0;let t;while((t=rx.workplaceToken.exec(m[1]))!==null)out.extras.push(t[1])}
+ return out}
+function paint(o){$(fields.name).value=o.name;$(fields.surname).value=o.surname;$(fields.email).value=o.email;$(fields.employeeNumber).value=o.employeeNumber;$(fields.employeeId).value=o.employeeId;$(fields.workplace).value=o.workplace;$(fields.login).value=o.login;$(fields.extras).value=[...new Set(o.extras.filter(x=>x!==o.workplace))].join(', ')}
+function values(){rx.workplaceToken.lastIndex=0;const raw=$(fields.extras).value;const extras=[];let t;while((t=rx.workplaceToken.exec(raw))!==null)extras.push(t[1]);const workplace=$(fields.workplace).value.trim();return{name:$(fields.name).value.trim(),surname:$(fields.surname).value.trim(),email:$(fields.email).value.trim(),employeeNumber:$(fields.employeeNumber).value.trim(),employeeId:$(fields.employeeId).value.trim(),workplace,login:$(fields.login).value.trim(),extras:[...new Set(extras.filter(x=>x!==workplace))]}}
+const esc=s=>String(s||'').replace(/'/g,"''");
+function buildSQL(o){const extra=o.extras.join(', ');return `-- PORTFOLIO DEMO: generalized schema and synthetic workflow\nSTART TRANSACTION;\n\nSET @first_name = '${esc(o.name)}';\nSET @last_name = '${esc(o.surname)}';\nSET @email = '${esc(o.email)}';\nSET @employee_number = '${esc(o.employeeNumber)}';\nSET @employee_identifier = '${esc(o.employeeId)}';\nSET @login = '${esc(o.login.toUpperCase())}';\nSET @main_workplace = '${esc(o.workplace)}';\nSET @additional_workplaces = '${esc(extra)}';\n\n-- Authentication credentials are handled by the target system\n-- and are intentionally outside the scope of this public demo.\n\nINSERT INTO demo_employees\n(first_name, last_name, email, employee_number, employee_identifier, login)\nSELECT @first_name, @last_name, @email, @employee_number, @employee_identifier, @login\nWHERE NOT EXISTS (SELECT 1 FROM demo_employees WHERE login = @login);\n\n-- Workplace assignment is represented with generalized demo tables.\nINSERT INTO demo_employee_workplaces (login, workplace_code, is_default)\nSELECT @login, @main_workplace, 1\nWHERE @main_workplace <> '';\n\n-- Additional workplace values parsed by the browser tool:\n-- ${esc(extra||'none')}\n\nCOMMIT;`}
+function update(){const o=values();const missing=[];if(!o.employeeNumber)missing.push('employee number');if(!o.employeeId)missing.push('employee ID');if(!o.workplace)missing.push('workplace');if(!o.login)missing.push('login');$('#state').textContent=missing.length?'Missing: '+missing.join(', '):'Required fields OK';$('#state').className=missing.length?'err':'ok';$('#sql').textContent=buildSQL(o)}
+function reparse(){paint(parse($('#src').value));update()}
+$('#src').addEventListener('input',reparse);Object.values(fields).forEach(s=>$(s).addEventListener('input',update));
+$('#uppercase').addEventListener('click',()=>{$(fields.login).value=$(fields.login).value.toUpperCase();update()});
+$('#toggle').addEventListener('click',()=>{$('#sql').style.display=$('#sql').style.display==='block'?'none':'block'});
+$('#copy').addEventListener('click',async()=>{const text=$('#sql').textContent.trim();if(text)await navigator.clipboard.writeText(text)});
+update();
+})();
+</script>
+</body>
+</html>
